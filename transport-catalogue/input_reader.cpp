@@ -114,6 +114,17 @@ namespace detail {
                 catalogue.AddRoute(command.id, ParseRoute(command.description));
             }
         }
-        catalogue.AddBusOnStop();
+    }
+
+    void InputReader::Input(std::istream& cin, Catalogue::TransportCatalogue& catalogue) {
+
+        int base_request_count;
+        cin >> base_request_count >> std::ws;
+        for (int i = 0; i < base_request_count; ++i) {
+            std::string line;
+            getline(cin, line);
+            ParseLine(line);
+        }
+        ApplyCommands(catalogue);
     }
 };

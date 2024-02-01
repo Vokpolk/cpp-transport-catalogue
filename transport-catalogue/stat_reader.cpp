@@ -7,7 +7,7 @@ namespace detail {
 
     using namespace std::literals;
 
-    void ParseAndPrintStat(const Catalogue::TransportCatalogue& transport_catalogue, std::string_view request,
+    void StatReader::ParseAndPrintStat(const Catalogue::TransportCatalogue& transport_catalogue, std::string_view request,
         std::ostream& output) {
         output << std::setprecision(6);
 
@@ -43,6 +43,16 @@ namespace detail {
             else {
                 output << "not found"sv << std::endl;
             }
+        }
+    }
+
+    void StatReader::Output(std::istream& cin, std::ostream& output, Catalogue::TransportCatalogue& catalogue) {
+        int stat_request_count;
+        cin >> stat_request_count >> std::ws;
+        for (int i = 0; i < stat_request_count; ++i) {
+            std::string line;
+            getline(cin, line);
+            ParseAndPrintStat(catalogue, line, output);
         }
     }
 };

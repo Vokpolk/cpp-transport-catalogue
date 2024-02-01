@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <iostream>
 
 #include "geo.h"
 #include "transport_catalogue.h"
@@ -34,6 +35,11 @@ namespace detail {
          * Наполняет данными транспортный справочник, используя команды из commands_
          */
         void ApplyCommands(Catalogue::TransportCatalogue& catalogue) const;
+
+        /**
+         * Ввод данных
+         */
+        void Input(std::istream& cin, Catalogue::TransportCatalogue& catalogue);
 
     private:
         std::vector<CommandDescription> commands_;
