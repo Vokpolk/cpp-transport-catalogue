@@ -28,6 +28,40 @@ namespace detail {
         return { lat, lng };
     }
 
+    std::vector<std::pair<std::string_view, double>> ParseStopAndDistance(std::string_view str) {
+        std::vector<std::pair<std::string_view, double>> result;
+        if (str.find(" to ") == str.npos) {
+            return result;
+        }
+        //удаляем координаты из str
+        str = str.substr(str.find_first_not_of(' '), str.size() - 1);
+        str = str.substr(str.find_first_of(',') + 1, str.size() - 1);
+        str = str.substr(str.find_first_of(',') + 1, str.size() - 1);
+
+        while (!str.empty()) {
+            str = str.substr(str.find_first_not_of(' '), str.size() - 1);
+
+            std::pair<std::string_view, double> temp;
+            temp.second = std::stod(std::string(str.substr(0, str.find_first_of('m'))));
+            str = str.substr(str.find_first_of(' '), str.size() - 1);
+            str = str.substr(str.find_first_not_of(' '), str.size() - 1);
+            str = str.substr(str.find_first_of(' '), str.size() - 1);
+            str = str.substr(str.find_first_not_of(' '), str.size() - 1);
+            temp.first = str.substr(0, str.find_first_of(','));
+
+            result.emplace_back(temp);
+
+            if (str.find(" to ") == str.npos) {
+                str = ""sv;
+            }
+            else {
+                str = str.substr(str.find_first_of(','), str.size() - 1);
+                str = str.substr(str.find_first_of(' '), str.size() - 1);
+            }
+        }
+        return result;
+    }
+
     /**
      * Удаляет пробелы в начале и конце строки
      */
@@ -112,6 +146,17 @@ namespace detail {
             }
             else if (command.command == "Bus"s) {
                 catalogue.AddRoute(command.id, ParseRoute(command.description));
+            }
+        }
+
+
+        for (const auto& command : commands_) {
+            auto temp = ParseStopAndDistance(command.description);
+
+            std::vector<std::pair<std::string_view, double>> stop_and_distance;
+            for (const auto& s_and_d : temp) {
+                stop_and_distance.emplace_back(s_and_d);
+                catalogue.AddDistanceBetweenStops(catalogue.SearchStop(command.id), catalogue.SearchStop(s_and_d.first), s_and_d.second);
             }
         }
     }

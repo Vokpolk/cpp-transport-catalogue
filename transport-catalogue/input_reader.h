@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <list>
 #include <iostream>
 
 #include "geo.h"

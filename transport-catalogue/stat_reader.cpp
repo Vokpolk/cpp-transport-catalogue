@@ -9,19 +9,20 @@ namespace detail {
 
     void StatReader::ParseAndPrintStat(const Catalogue::TransportCatalogue& transport_catalogue, std::string_view request,
         std::ostream& output) {
+        if (flag)
+            std::cout << "\n"sv;
         output << std::setprecision(6);
-
         if (request[0] == 'B') {
 
             auto bus = request.substr(request.find_first_of(' ') + 1);
 
             if (transport_catalogue.SearchRoute(bus)) {
                 const auto info = transport_catalogue.GetRouteInfo(bus);
-                output << request << ": "sv << info.stops_on_route << " stops on route, "sv << info.unique_stops << " unique stops, "sv << info.length << " route length"sv << std::endl;
+                output << request << ": "sv << info.stops_on_route << " stops on route, "sv << info.unique_stops << " unique stops, "sv << info.new_length << " route length, "sv << info.curvature << " curvature"sv;
 
             }
             else {
-                output << request << ": not found"sv << std::endl;
+                output << request << ": not found"sv;
             }
         }
         else if (request[0] == 'S') {
@@ -30,20 +31,20 @@ namespace detail {
             if (transport_catalogue.SearchStop(stop)) {
                 const auto& info = transport_catalogue.GetStopInfo(stop);
                 if (info.size()) {
-                    output << "buses "sv;
+                    output << "buses"sv;
                     for (auto i = info.begin(); i != info.end(); i++) {
-                        output << *i << " "sv;
+                        output << " "sv << *i;
                     }
-                    output << std::endl;
                 }
                 else {
-                    output << "no buses"sv << std::endl;
+                    output << "no buses"sv;
                 }
             }
             else {
-                output << "not found"sv << std::endl;
+                output << "not found"sv;
             }
         }
+        flag = true;
     }
 
     void StatReader::Output(std::istream& cin, std::ostream& output, Catalogue::TransportCatalogue& catalogue) {

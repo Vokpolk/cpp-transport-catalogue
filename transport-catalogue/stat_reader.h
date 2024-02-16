@@ -13,5 +13,7 @@ namespace detail {
             std::ostream& output);
 
         void Output(std::istream& cin, std::ostream& output, Catalogue::TransportCatalogue& catalogue);
+    private:
+        bool flag = false;
     };
 };
