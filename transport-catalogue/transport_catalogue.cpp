@@ -2,7 +2,7 @@
 
 namespace Catalogue {
 
-    void TransportCatalogue::AddRoute(std::string_view name, std::vector<std::string_view> stops) {
+    void TransportCatalogue::AddRoute(std::string_view name, const std::vector<std::string_view>& stops) {
         buses_[name] = { name, stops };
         for (auto i : stops) {
             buses_on_stops_[i].insert(name);
