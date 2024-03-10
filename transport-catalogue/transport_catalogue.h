@@ -5,20 +5,22 @@
 #include <string_view>
 #include <set>
 #include <utility>
+#include <optional>
 #include "geo.h"
 
 #include <iostream>
 
 namespace Catalogue {
     struct Stop {
-        std::string_view name;   //название остановки
-        double latitude;    //широта
-        double longitude;   //долгота
+        std::string name;   //РЅР°Р·РІР°РЅРёРµ РѕСЃС‚Р°РЅРѕРІРєРё
+        double latitude;    //С€РёСЂРѕС‚Р°
+        double longitude;   //РґРѕР»РіРѕС‚Р°
     };
 
-    struct Bus { //автобус и его маршрут
-        std::string_view name;
-        std::vector<std::string_view> stops;
+    struct Bus { //Р°РІС‚РѕР±СѓСЃ Рё РµРіРѕ РјР°СЂС€СЂСѓС‚
+        std::string name;
+        std::vector<std::string> stops;
+        bool is_roundtrip;
     };
 
     struct RouteInfo {
@@ -31,14 +33,8 @@ namespace Catalogue {
 
     struct Hasher {
         std::size_t operator()(std::pair<const Stop*, const Stop*> plate) const {
-
-
             auto hash1 = std::hash<const Stop*>{}(plate.first);
             auto hash2 = std::hash<const Stop*>{}(plate.second);
-
-            //std::cout << "Stop1.name: " << plate.first->name << " Stop1.name: " << plate.second->name << "\n";
-            //std::cout << "Stop1* - " << plate.first << "; Stop2* - " << plate.second << "\n";
-            //std::cout << "hash1* - " << hash1 << "; hash1 ^ hash2* - " << (hash1 ^ hash2) << "\n";
 
             if (hash1 != hash2) {
                 return hash1 ^ hash2;
@@ -50,27 +46,27 @@ namespace Catalogue {
 
     class TransportCatalogue {
     public:
-        void AddRoute(std::string_view name, std::vector<std::string_view> stops);
-        void AddStop(std::string_view name, double lat, double lng);
+        void AddRoute(const std::string& name, const std::vector<std::string>& stops, bool is_roundtrip);
+        void AddStop(const std::string&, double lat, double lng);
 
-        const Bus* SearchRoute(std::string_view route) const;
-        const Stop* SearchStop(std::string_view stop) const;
+        const Bus* SearchRoute(const std::string& route) const;
+        const Stop* SearchStop(const std::string& stop) const;
 
-        RouteInfo GetRouteInfo(std::string_view route) const;
-
-        const std::set<std::string_view>& GetStopInfo(std::string_view stop) const;
+        std::optional<RouteInfo> GetRouteInfo(const std::string& route) const;
+        std::optional<const std::set<std::string>> GetStopInfo(const std::string& stop) const;
 
         //distance between stops
         void AddDistanceBetweenStops(const Stop* stop1, const Stop* stop2, double distance);
         double GetDistanceBetweenStops(const Stop& stop1, const Stop& stop2) const;
 
+        const inline std::unordered_map<std::string, Stop>& GetStops() const  { return stops_; }
+        const inline std::unordered_map<std::string, Bus>& GetBuses() const { return buses_; }
+
     private:
-        std::unordered_map<std::string_view, Stop> stops_;
-        std::unordered_map<std::string_view, Bus> buses_;
-
-        std::unordered_map<std::string_view, std::set<std::string_view>> buses_on_stops_;
-
+        std::unordered_map<std::string, Stop> stops_;
+        std::unordered_map<std::string, Bus> buses_;
+        std::unordered_map<std::string, std::set<std::string>> buses_on_stops_;
         std::unordered_map<std::pair<const Stop*, const Stop*>, double, Hasher> distance_between_stops_;
 
     };
-};
+}
