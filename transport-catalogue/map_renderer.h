@@ -117,6 +117,9 @@ namespace renderer {
             structure_ = structure;
         }
 
+        void OutputSVG(std::ostream& out, const Catalogue::TransportCatalogue& catalogue);
+
+    private:
         void FillRoutes(std::vector<std::pair<std::string, Route>>& route, const Catalogue::TransportCatalogue& catalogue);
 
         void FillRoutePolylines(std::vector<svg::Polyline>& routes_polylines, const std::vector<std::pair<std::string, Route>>& routes, SphereProjector& proj);
@@ -124,9 +127,7 @@ namespace renderer {
         void FillStopsCircles(std::vector<svg::Circle>& stop_circles, const std::vector<std::pair<std::string, Route>>& routes, SphereProjector& proj);
         void FillStopsNames(std::vector<svg::Text>& stop_names, const std::vector<std::pair<std::string, Route>>& routes, SphereProjector& proj);
 
-        void OutputSVG(std::ostream& out, const Catalogue::TransportCatalogue& catalogue);
 
-    private:
         RenderingStructure structure_;
     };
 

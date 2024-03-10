@@ -10,10 +10,11 @@ namespace geo {
         if (from == to) {
             return 0.0;
         }
+        const double earth_radius{ 6371000.0 };
         const double dr = M_PI / 180.0;
         return acos(sin(from.lat * dr) * sin(to.lat * dr)
             + cos(from.lat * dr) * cos(to.lat * dr)
-            * cos(std::abs(from.lng - to.lng) * dr)) * 6371000.0;
+            * cos(std::abs(from.lng - to.lng) * dr)) * earth_radius;
     }
 
 }  // namespace geo

@@ -14,7 +14,11 @@ namespace json_reader {
     public:
 
         void InputJSON(std::istream& input, Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& renderer);
+        void FillBaseRequests(const json::Dict& dict, Catalogue::TransportCatalogue& catalogue); //заполнение базовых запросов
         void RenderSettings(const json::Dict& dict, renderer::MapRenderer& renderer);
+        void FillStatSettings(const json::Dict& dict); //заполнение запросов статистики
+
+
 
         void OutputJSON(std::ostream& output, const Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& map);
     private:

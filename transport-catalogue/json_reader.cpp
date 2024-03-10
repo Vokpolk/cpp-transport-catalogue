@@ -12,93 +12,77 @@ namespace json_reader {
             const json::Dict& dict = root.AsMap();
 
             if (dict.count("base_requests"s)) {
-                auto& base_request = dict.at("base_requests"s).AsArray();
-
-                //описываю остановки
-                for (auto& stop : base_request) {
-                    auto& maybe_stop = stop.AsMap();
-                    if (maybe_stop.count("type"s)) {
-                        if (maybe_stop.at("type"s).AsString() == "Stop"s) {
-                            //заполняем остановки
-                            catalogue.AddStop(
-                                maybe_stop.at("name"s).AsString(),
-                                maybe_stop.at("latitude"s).AsDouble(),
-                                maybe_stop.at("longitude"s).AsDouble()
-                            );
-
-                        }
-                    }
-                }
-
-                //описываю маршруты
-                for (auto& bus : base_request) {
-                    auto& maybe_bus = bus.AsMap();
-                    if (maybe_bus.count("type"s)) {
-                        if (maybe_bus.at("type"s).AsString() == "Bus"s) {
-                            //заполняем маршруты
-                            std::vector<std::string> stops;
-                            if (maybe_bus.count("stops"s)) {
-                                auto& stops_arr = maybe_bus.at("stops"s).AsArray(); //массив остановок
-                                for (auto& stop : stops_arr) {
-                                    stops.push_back(stop.AsString()); //первый проход
-                                }
-                            }
-                            bool is_roundtrip = true;
-                            if (!maybe_bus.at("is_roundtrip"s).AsBool()) {
-                                auto arr = stops;
-                                stops.insert(stops.end(), std::next(arr.rbegin()), arr.rend());
-                                is_roundtrip = false;
-                            }
-                            catalogue.AddRoute(maybe_bus.at("name"s).AsString(), stops, is_roundtrip);
-                        }
-                    }
-                }
-
-                //добавляем расстояния между остановками
-                for (auto& stop : base_request) {
-                    auto& maybe_stop = stop.AsMap();
-                    if (maybe_stop.count("type"s)) {
-                        if (maybe_stop.at("type"s).AsString() == "Stop"s) {
-                            std::vector<std::pair<std::string, double>> stop_and_distance;
-                            std::string name = maybe_stop.at("name"s).AsString();
-                            for (auto& s_and_d : maybe_stop.at("road_distances"s).AsMap()) {
-                                catalogue.AddDistanceBetweenStops(catalogue.SearchStop(name), catalogue.SearchStop(s_and_d.first), s_and_d.second.AsDouble());
-                            }
-                        }
-                    }
-                }
+                FillBaseRequests(dict, catalogue);
             }
             //
-
             if (dict.count("render_settings")) {
                 RenderSettings(dict, renderer);
             }
-
             //
             if (dict.count("stat_requests"s)) {
-                auto& stat_requests = dict.at("stat_requests"s).AsArray();
+                FillStatSettings(dict);
+            }
+        }
+    }
 
-                for (auto& request : stat_requests) {
-                    auto& maybe_request = request.AsMap();
-                    if (maybe_request.count("type"s)) {
-                        if (maybe_request.at("type"s).AsString() == "Stop"s || maybe_request.at("type"s).AsString() == "Bus"s) {
-                            stat_requests_.push_back({
-                                maybe_request.at("id"s).AsInt(),
-                                maybe_request.at("type"s).AsString(),
-                                maybe_request.at("name"s).AsString() 
-                            });
+    void Reader::FillBaseRequests(const json::Dict& dict, Catalogue::TransportCatalogue& catalogue) {
+        
+        auto& base_request = dict.at("base_requests"s).AsArray();
+
+        //описываю остановки
+        for (auto& stop : base_request) {
+            auto& maybe_stop = stop.AsMap();
+            if (maybe_stop.count("type"s)) {
+                if (maybe_stop.at("type"s).AsString() == "Stop"s) {
+                    //заполняем остановки
+                    catalogue.AddStop(
+                        maybe_stop.at("name"s).AsString(),
+                        maybe_stop.at("latitude"s).AsDouble(),
+                        maybe_stop.at("longitude"s).AsDouble()
+                    );
+
+                }
+            }
+        }
+
+        //описываю маршруты
+        for (auto& bus : base_request) {
+            auto& maybe_bus = bus.AsMap();
+            if (maybe_bus.count("type"s)) {
+                if (maybe_bus.at("type"s).AsString() == "Bus"s) {
+                    //заполняем маршруты
+                    std::vector<std::string> stops;
+                    if (maybe_bus.count("stops"s)) {
+                        auto& stops_arr = maybe_bus.at("stops"s).AsArray(); //массив остановок
+                        for (auto& stop : stops_arr) {
+                            stops.push_back(stop.AsString()); //первый проход
                         }
-                        if (maybe_request.at("type"s).AsString() == "Map"s) {
-                            stat_requests_.push_back({
-                                maybe_request.at("id"s).AsInt(),
-                                maybe_request.at("type"s).AsString(),
-                                ""s
-                                });
-                        }
+                    }
+                    bool is_roundtrip = true;
+                    if (!maybe_bus.at("is_roundtrip"s).AsBool()) {
+                        auto arr = stops;
+                        stops.insert(stops.end(), std::next(arr.rbegin()), arr.rend());
+                        is_roundtrip = false;
+                    }
+                    catalogue.AddRoute(maybe_bus.at("name"s).AsString(), stops, is_roundtrip);
+                }
+            }
+        }
+
+        //добавляем расстояния между остановками
+        for (auto& stop : base_request) {
+            auto& maybe_stop = stop.AsMap();
+            if (maybe_stop.count("type"s)) {
+                if (maybe_stop.at("type"s).AsString() == "Stop"s) {
+                    std::vector<std::pair<std::string, double>> stop_and_distance;
+                    std::string name = maybe_stop.at("name"s).AsString();
+                    for (auto& s_and_d : maybe_stop.at("road_distances"s).AsMap()) {
+                        catalogue.AddDistanceBetweenStops(catalogue.SearchStop(name), catalogue.SearchStop(s_and_d.first), s_and_d.second.AsDouble());
                     }
                 }
             }
         }
+        
     }
 
     void Reader::RenderSettings(const json::Dict& dict, renderer::MapRenderer& renderer) {
@@ -192,6 +176,30 @@ namespace json_reader {
             structure.color_palette_.emplace_back(temp);
         }
         renderer.FillRenderingStructure(structure);
+    }
+
+    void Reader::FillStatSettings(const json::Dict& dict) {
+        auto& stat_requests = dict.at("stat_requests"s).AsArray();
+
+        for (auto& request : stat_requests) {
+            auto& maybe_request = request.AsMap();
+            if (maybe_request.count("type"s)) {
+                if (maybe_request.at("type"s).AsString() == "Stop"s || maybe_request.at("type"s).AsString() == "Bus"s) {
+                    stat_requests_.push_back({
+                        maybe_request.at("id"s).AsInt(),
+                        maybe_request.at("type"s).AsString(),
+                        maybe_request.at("name"s).AsString()
+                        });
+                }
+                if (maybe_request.at("type"s).AsString() == "Map"s) {
+                    stat_requests_.push_back({
+                        maybe_request.at("id"s).AsInt(),
+                        maybe_request.at("type"s).AsString(),
+                        ""s
+                        });
+                }
+            }
+        }
     }
 
     void Reader::OutputJSON(std::ostream& output, const Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& map) {
