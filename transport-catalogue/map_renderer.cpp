@@ -3,7 +3,7 @@
 namespace renderer {
 
     void MapRenderer::FillRoutes(std::vector<std::pair<std::string, Route>>& route,
-                                 const Catalogue::TransportCatalogue& catalogue) {
+        const Catalogue::TransportCatalogue& catalogue) {
         const auto& buses = catalogue.GetBuses();
         const auto& stops = catalogue.GetStops();
 
@@ -24,9 +24,9 @@ namespace renderer {
 
 
     void MapRenderer::FillRoutePolylines(std::vector<svg::Polyline>& routes_polylines,
-                                         const std::vector<std::pair<std::string, 
-                                         Route>>& routes, 
-                                         SphereProjector& proj) {
+        const std::vector<std::pair<std::string,
+        Route>>&routes,
+        SphereProjector& proj) {
         using namespace std::literals;
         std::size_t color_count = 0;
         for (const auto& route : routes) {
@@ -57,9 +57,9 @@ namespace renderer {
 
 
     void MapRenderer::FillRouteNames(std::vector<std::pair<std::string, Route>>& routes,
-                                     const Catalogue::TransportCatalogue& catalogue,
-                                     std::vector<svg::Text>& routes_names,
-                                     SphereProjector& proj) {
+        const Catalogue::TransportCatalogue& catalogue,
+        std::vector<svg::Text>& routes_names,
+        SphereProjector& proj) {
         using namespace std::literals;
         svg::Text underlayer_route_name;
         svg::Text route_name;
@@ -162,8 +162,8 @@ namespace renderer {
     }
 
     void MapRenderer::FillStopsCircles(std::vector<svg::Circle>& stop_circles,
-                                       const std::vector<std::pair<std::string, Route>>& routes,
-                                       SphereProjector& proj) {
+        const std::vector<std::pair<std::string, Route>>& routes,
+        SphereProjector& proj) {
         using namespace std::literals;
         svg::Circle stop_circle;
         std::set<std::pair<std::string, geo::Coordinates>> unique_stops;
@@ -184,8 +184,8 @@ namespace renderer {
     }
 
     void MapRenderer::FillStopsNames(std::vector<svg::Text>& stop_names,
-                                     const std::vector<std::pair<std::string, Route>>& routes,
-                                     SphereProjector& proj) {
+        const std::vector<std::pair<std::string, Route>>& routes,
+        SphereProjector& proj) {
 
         using namespace std::literals;
         svg::Text stop_name;

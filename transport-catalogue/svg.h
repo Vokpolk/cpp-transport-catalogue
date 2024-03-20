@@ -40,21 +40,6 @@ namespace svg {
     using Color = std::string;
     inline const Color NoneColor{ "none" };
 
-    /*struct Rgb {
-        Rgb(int r, int g, int b) : r(r), g(g), b(b) {}
-        int r;
-        int g;
-        int b;
-    };
-
-    struct Rgba {
-        Rgba(int r, int g, int b, double opacity) : r(r), g(g), b(b), opacity(opacity) {}
-        int r;
-        int g;
-        int b;
-        double opacity;
-    };*/
-
     enum class StrokeLineCap { //тип формы конца линии.
         BUTT,
         ROUND,

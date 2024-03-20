@@ -42,7 +42,7 @@ namespace Catalogue {
         void AddDistanceBetweenStops(const Stop* stop1, const Stop* stop2, double distance);
         double GetDistanceBetweenStops(const Stop& stop1, const Stop& stop2) const;
 
-        const inline std::unordered_map<std::string, Stop>& GetStops() const  { return stops_; }
+        const inline std::unordered_map<std::string, Stop>& GetStops() const { return stops_; }
         const inline std::unordered_map<std::string, Bus>& GetBuses() const { return buses_; }
 
     private:
