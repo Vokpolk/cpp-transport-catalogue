@@ -45,7 +45,7 @@ namespace svg {
     void Object::Render(const RenderContext& context) const {
         context.RenderIndent();
 
-        // Р”РµР»РµРіРёСЂСѓРµРј РІС‹РІРѕРґ С‚РµРіР° СЃРІРѕРёРј РїРѕРґРєР»Р°СЃСЃР°Рј
+        // Делегируем вывод тега своим подклассам
         RenderObject(context);
 
         context.out << std::endl;
@@ -101,31 +101,31 @@ namespace svg {
         return *this;
     }
 
-    // Р—Р°РґР°С‘С‚ СЃРјРµС‰РµРЅРёРµ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РѕРїРѕСЂРЅРѕР№ С‚РѕС‡РєРё (Р°С‚СЂРёР±СѓС‚С‹ dx, dy)
+    // Задаёт смещение относительно опорной точки (атрибуты dx, dy)
     Text& Text::SetOffset(Point offset) {
         offset_ = offset;
         return *this;
     }
 
-    // Р—Р°РґР°С‘С‚ СЂР°Р·РјРµСЂС‹ С€СЂРёС„С‚Р° (Р°С‚СЂРёР±СѓС‚ font-size)
+    // Задаёт размеры шрифта (атрибут font-size)
     Text& Text::SetFontSize(uint32_t size) {
         size_ = size;
         return *this;
     }
 
-    // Р—Р°РґР°С‘С‚ РЅР°Р·РІР°РЅРёРµ С€СЂРёС„С‚Р° (Р°С‚СЂРёР±СѓС‚ font-family)
+    // Задаёт название шрифта (атрибут font-family)
     Text& Text::SetFontFamily(std::string font_family) {
         font_family_ = std::move(font_family);
         return *this;
     }
 
-    // Р—Р°РґР°С‘С‚ С‚РѕР»С‰РёРЅСѓ С€СЂРёС„С‚Р° (Р°С‚СЂРёР±СѓС‚ font-weight)
+    // Задаёт толщину шрифта (атрибут font-weight)
     Text& Text::SetFontWeight(std::string font_weight) {
         font_weight_ = std::move(font_weight);
         return *this;
     }
 
-    // Р—Р°РґР°С‘С‚ С‚РµРєСЃС‚РѕРІРѕРµ СЃРѕРґРµСЂР¶РёРјРѕРµ РѕР±СЉРµРєС‚Р° (РѕС‚РѕР±СЂР°Р¶Р°РµС‚СЃСЏ РІРЅСѓС‚СЂРё С‚РµРіР° text)
+    // Задаёт текстовое содержимое объекта (отображается внутри тега text)
     Text& Text::SetData(std::string data) {
         data_ = std::move(data);
         return *this;

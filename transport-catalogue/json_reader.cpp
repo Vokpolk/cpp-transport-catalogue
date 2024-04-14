@@ -1,11 +1,18 @@
 #include "json_reader.h"
 #include "json_builder.h"
+#include <variant>
 #include <sstream>
+
+#include "graph.h"
 
 namespace json_reader {
     using namespace std::literals;
 
-    void Reader::InputJSON(std::istream& input, Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& renderer) {
+    void Reader::InputJSON(std::istream& input
+        , Catalogue::TransportCatalogue& catalogue
+        , renderer::MapRenderer& renderer
+        , Router::TransportRouter& router) {
+
         json::Document document = json::Load(input);
         auto& root = document.GetRoot();
 
@@ -23,19 +30,23 @@ namespace json_reader {
             if (dict.count("stat_requests"s)) {
                 FillStatSettings(dict);
             }
+            //
+            if (dict.count("routing_settings"s)) {
+                FillRouteSettings(dict, router, catalogue);
+            }
         }
     }
 
     void Reader::FillBaseRequests(const json::Dict& dict, Catalogue::TransportCatalogue& catalogue) {
-        
+
         auto& base_request = dict.at("base_requests"s).AsArray();
 
-        //РѕРїРёСЃС‹РІР°СЋ РѕСЃС‚Р°РЅРѕРІРєРё
+        //описываю остановки
         for (auto& stop : base_request) {
             auto& maybe_stop = stop.AsDict();
             if (maybe_stop.count("type"s)) {
                 if (maybe_stop.at("type"s).AsString() == "Stop"s) {
-                    //Р·Р°РїРѕР»РЅСЏРµРј РѕСЃС‚Р°РЅРѕРІРєРё
+                    //заполняем остановки
                     catalogue.AddStop(
                         maybe_stop.at("name"s).AsString(),
                         maybe_stop.at("latitude"s).AsDouble(),
@@ -46,17 +57,17 @@ namespace json_reader {
             }
         }
 
-        //РѕРїРёСЃС‹РІР°СЋ РјР°СЂС€СЂСѓС‚С‹
+        //описываю маршруты
         for (auto& bus : base_request) {
             auto& maybe_bus = bus.AsDict();
             if (maybe_bus.count("type"s)) {
                 if (maybe_bus.at("type"s).AsString() == "Bus"s) {
-                    //Р·Р°РїРѕР»РЅСЏРµРј РјР°СЂС€СЂСѓС‚С‹
+                    //заполняем маршруты
                     std::vector<std::string> stops;
                     if (maybe_bus.count("stops"s)) {
-                        auto& stops_arr = maybe_bus.at("stops"s).AsArray(); //РјР°СЃСЃРёРІ РѕСЃС‚Р°РЅРѕРІРѕРє
+                        auto& stops_arr = maybe_bus.at("stops"s).AsArray(); //массив остановок
                         for (auto& stop : stops_arr) {
-                            stops.push_back(stop.AsString()); //РїРµСЂРІС‹Р№ РїСЂРѕС…РѕРґ
+                            stops.push_back(stop.AsString()); //первый проход
                         }
                     }
                     bool is_roundtrip = true;
@@ -70,7 +81,7 @@ namespace json_reader {
             }
         }
 
-        //РґРѕР±Р°РІР»СЏРµРј СЂР°СЃСЃС‚РѕСЏРЅРёСЏ РјРµР¶РґСѓ РѕСЃС‚Р°РЅРѕРІРєР°РјРё
+        //добавляем расстояния между остановками
         for (auto& stop : base_request) {
             auto& maybe_stop = stop.AsDict();
             if (maybe_stop.count("type"s)) {
@@ -83,14 +94,14 @@ namespace json_reader {
                 }
             }
         }
-        
+
     }
 
     void Reader::RenderSettings(const json::Dict& dict, renderer::MapRenderer& renderer) {
         auto& render_settings = dict.at("render_settings"s).AsDict();
 
         renderer::RenderingStructure structure;
-        
+
         structure.width_ = render_settings.at("width").AsDouble();
         structure.height_ = render_settings.at("height").AsDouble();
         structure.padding_ = render_settings.at("padding").AsDouble();
@@ -179,6 +190,17 @@ namespace json_reader {
         renderer.FillRenderingStructure(structure);
     }
 
+    void Reader::FillRouteSettings(const json::Dict& dict,
+        Router::TransportRouter& router,
+        Catalogue::TransportCatalogue& catalogue) {
+        auto& routing_settings = dict.at("routing_settings"s).AsDict();
+
+        router.SetSettings(routing_settings.at("bus_velocity"s).AsDouble(), routing_settings.at("bus_wait_time"s).AsDouble());
+
+        //ну и здесь строим графы маршрутов.
+        router.MakeRouteGraph(catalogue);
+    }
+
     void Reader::FillStatSettings(const json::Dict& dict) {
         auto& stat_requests = dict.at("stat_requests"s).AsArray();
 
@@ -189,91 +211,117 @@ namespace json_reader {
                     stat_requests_.push_back({
                         maybe_request.at("id"s).AsInt(),
                         maybe_request.at("type"s).AsString(),
-                        maybe_request.at("name"s).AsString()
+                        maybe_request.at("name"s).AsString(),
+                        ""s,
+                        ""s
                         });
                 }
                 if (maybe_request.at("type"s).AsString() == "Map"s) {
                     stat_requests_.push_back({
                         maybe_request.at("id"s).AsInt(),
                         maybe_request.at("type"s).AsString(),
+                        ""s,
+                        ""s,
                         ""s
+                        });
+                }
+                if (maybe_request.at("type"s).AsString() == "Route"s) {
+                    stat_requests_.push_back({
+                        maybe_request.at("id"s).AsInt(),
+                        maybe_request.at("type"s).AsString(),
+                        ""s,
+                        maybe_request.at("from"s).AsString(),
+                        maybe_request.at("to"s).AsString(),
                         });
                 }
             }
         }
     }
 
-    void Reader::OutputJSON(std::ostream& output, const Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& map) {
+    void Reader::OutputJSON(std::ostream& output
+        , const Catalogue::TransportCatalogue& catalogue
+        , renderer::MapRenderer& map
+        , const Router::TransportRouter& router) {
+
         using namespace json;
 
-        //Document doc();
         Builder builder;
         builder.StartArray();
-        //std::vector<json::Node> result_map;
         for (const auto& request : stat_requests_) {
-            //РµСЃР»Рё РєР°СЂС‚Р°
+            //если карта
             if (request.type == "Map"s) {
                 std::ostringstream strs;
                 map.OutputSVG(strs, catalogue);
-
                 builder.StartDict().Key("map"s).Value(strs.str()).Key("request_id"s).Value(request.id).EndDict();
-
-                //result_map.push_back(json::Dict{ {"map"s, strs.str()}, {"request_id"s, request.id}});
             }
-
-
-            //РµСЃР»Рё РѕСЃС‚Р°РЅРѕРІРєР°
+            //если остановка
             if (request.type == "Stop"s) {
                 auto buses_on_stop = catalogue.GetStopInfo(request.name);
                 builder.StartDict();
                 if (buses_on_stop.has_value()) {
                     json::Node buses_arr{ json::Array{buses_on_stop.value().begin(), buses_on_stop.value().end()} };
-
                     builder.Key("buses"s).Value(buses_arr.AsArray()).Key("request_id"s).Value(request.id);
-
-                    //result_map.push_back(json::Dict{ {"buses"s, buses_arr}, {"request_id"s, request.id} });
                 }
                 else {
                     builder.Key("request_id"s).Value(request.id).Key("error_message"s).Value("not found"s);
-                    //result_map.push_back(json::Dict{ {"request_id"s, request.id}, {"error_message"s, "not found"s}});
                 }
                 builder.EndDict();
             }
-            //РµСЃР»Рё РјР°СЂС€СЂСѓС‚
+            //если маршрут
             if (request.type == "Bus"s) {
                 builder.StartDict();
                 auto buses = catalogue.GetRouteInfo(request.name);
                 if (buses.has_value()) {
-
                     builder
                         .Key("curvature"s).Value(buses.value().curvature)
                         .Key("request_id"s).Value(request.id)
                         .Key("route_length"s).Value(buses.value().new_length)
                         .Key("stop_count"s).Value(static_cast<int>(buses.value().stops_on_route))
                         .Key("unique_stop_count"s).Value(static_cast<int>(buses.value().unique_stops));
-
-                    /*result_map.push_back(json::Dict{ 
-                        {"curvature"s, buses.value().curvature},
-                        {"request_id"s, request.id},
-                        {"route_length"s, buses.value().new_length},
-                        {"stop_count"s, static_cast<int>(buses.value().stops_on_route)},
-                        {"unique_stop_count"s, static_cast<int>(buses.value().unique_stops)} 
-                    });*/
                 }
                 else {
-
                     builder.Key("request_id"s).Value(request.id).Key("error_message"s).Value("not found"s);
+                }
+                builder.EndDict();
+            }
+            //если построить маршрут от точки А до точки Б
+            if (request.type == "Route"s) {
+                builder.StartDict();
+                if (auto result_situations = router.MakeRoute(catalogue, request.from, request.to)) {
+                    builder.Key("items"s).StartArray();
+                    double total_time = 0.0;
+                    if (request.from != request.to) {
+                        for (const auto& edge : result_situations.value()) {
+                            builder.StartDict();
+                            if (std::holds_alternative<Router::WaitEdgeInfo>(edge)) {
 
-                    /*result_map.push_back(json::Dict{{"request_id"s, request.id},
-                                             {"error_message"s, "not found"s} });*/
+                                builder
+                                    .Key("stop_name"s).Value(static_cast<std::string>(std::get<Router::WaitEdgeInfo>(edge).stop_name))
+                                    .Key("time"s).Value(std::get<Router::WaitEdgeInfo>(edge).time).Key("type"s).Value("Wait"s);
+                                total_time += std::get<Router::WaitEdgeInfo>(edge).time;
+                            }
+                            else {
+                                builder
+                                    .Key("bus"s).Value(static_cast<std::string>(std::get<Router::BusEdgeInfo>(edge).bus_name))
+                                    .Key("span_count").Value(static_cast<int>(std::get<Router::BusEdgeInfo>(edge).span_count))
+                                    .Key("time"s).Value(std::get<Router::BusEdgeInfo>(edge).time).Key("type"s).Value("Bus"s);
+                                total_time += std::get<Router::BusEdgeInfo>(edge).time;
+                            }
+                            builder.EndDict();
+                        }
+                    }
+                    builder.EndArray();
+                    builder.Key("request_id"s).Value(request.id).Key("total_time"s).Value(total_time);
+                }
+                else {
+                    builder.Key("request_id"s).Value(request.id).Key("error_message"s).Value("not found"s);
                 }
                 builder.EndDict();
             }
         }
+
         builder.EndArray();
         Document doc{ builder.Build() };
         Print(doc, output);
-        //Document doc{ result_map };
-        //Print(doc, output);
     }
 }

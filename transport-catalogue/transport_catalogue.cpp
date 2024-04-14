@@ -85,4 +85,13 @@ namespace Catalogue {
             return 0.0;
         }
     }
+
+    double TransportCatalogue::GetForwardDistanceBetweenStops(const Stop* stop1, const Stop* stop2) const {
+        if (distance_between_stops_.count({ stop1, stop2 })) {
+            return distance_between_stops_.at({ stop1, stop2 });
+        }
+        else {
+            return 0.0;
+        }
+    }
 }

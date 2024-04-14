@@ -4,12 +4,12 @@
 
 namespace domain {
     struct Stop {
-        std::string name;   //РЅР°Р·РІР°РЅРёРµ РѕСЃС‚Р°РЅРѕРІРєРё
-        double latitude;    //С€РёСЂРѕС‚Р°
-        double longitude;   //РґРѕР»РіРѕС‚Р°
+        std::string name;   //название остановки
+        double latitude;    //широта
+        double longitude;   //долгота
     };
 
-    struct Bus { //Р°РІС‚РѕР±СѓСЃ Рё РµРіРѕ РјР°СЂС€СЂСѓС‚
+    struct Bus { //автобус и его маршрут
         std::string name;
         std::vector<std::string> stops;
         bool is_roundtrip;

@@ -45,6 +45,12 @@ namespace Catalogue {
         const inline std::unordered_map<std::string, Stop>& GetStops() const { return stops_; }
         const inline std::unordered_map<std::string, Bus>& GetBuses() const { return buses_; }
 
+        size_t GetDistanceCount() const {
+            return distance_between_stops_.size();
+        }
+
+        double GetForwardDistanceBetweenStops(const Stop* stop1, const Stop* stop2) const;
+
     private:
         std::unordered_map<std::string, Stop> stops_;
         std::unordered_map<std::string, Bus> buses_;

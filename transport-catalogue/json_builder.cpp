@@ -139,12 +139,12 @@ namespace json {
 
     DictItemContext Builder::StartDict() {
         AddObject(Dict{}, /* one_shot */ false);
-        return DictItemContext{*this};
+        return DictItemContext{ *this };
     }
 
     ArrayItemContext Builder::StartArray() {
         AddObject(Array{}, /* one_shot */ false);
-        return ArrayItemContext{*this};
+        return ArrayItemContext{ *this };
     }
 
     Builder& Builder::EndDict() {

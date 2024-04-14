@@ -227,7 +227,7 @@ namespace renderer {
     void MapRenderer::OutputSVG(std::ostream& out, const Catalogue::TransportCatalogue& catalogue) {
         using namespace std::literals;
 
-        std::vector<std::pair<std::string, Route>> routes; //РёРјСЏ РјР°СЂС€СЂСѓС‚Р° + РЅР°Р±РѕСЂ РѕСЃС‚Р°РЅРѕРІРѕРє (РёРјСЏ + РєРѕРѕСЂРґРёРЅР°С‚С‹)
+        std::vector<std::pair<std::string, Route>> routes; //имя маршрута + набор остановок (имя + координаты)
         FillRoutes(routes, catalogue);
 
         std::vector<geo::Coordinates> geo;

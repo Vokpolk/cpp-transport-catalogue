@@ -36,7 +36,7 @@ namespace json {
         ArrayItemContext StartArray();
         Builder& EndArray();
     };
-    
+
     class ValueItemContext {
     private:
         Builder& builder_;
@@ -82,7 +82,7 @@ namespace json {
         KeyItemContext Key(std::string key);
         Builder& EndDict();
     };
-    
+
 
     class Builder {
     public:
@@ -103,7 +103,7 @@ namespace json {
 
         Node::Value& GetCurrentValue();
         const Node::Value& GetCurrentValue() const;
-    
+
         void AssertNewObjectContext() const;
         void AddObject(Node::Value value, bool one_shot);
     };
