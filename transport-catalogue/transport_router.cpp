@@ -2,19 +2,26 @@
 
 using namespace Router;
 
+TransportRouter::TransportRouter(double bus_velocity, double bus_wait_time, const Catalogue::TransportCatalogue& catalogue)
+    : router_settings_({ bus_velocity, bus_wait_time })
+    , catalogue_(catalogue) {
+
+    MakeGraphs();
+}
+
 double TransportRouter::ComputeWeightForRoute(const Catalogue::TransportCatalogue& catalogue,
                                               const domain::Bus& bus,
-                                              const size_t s1,
-                                              const size_t s2) const {
+                                              const size_t first_stop_number,
+                                              const size_t second_stop_number) const {
 
     double length = 0;//meters
-    if (s1 < s2) {
-        for (std::size_t i = s1; i < s2; i++) {
+    if (first_stop_number < second_stop_number) {
+        for (size_t i = first_stop_number; i < second_stop_number; i++) {
             length += catalogue.GetDistanceBetweenStops(*catalogue.SearchStop(bus.stops[i]), *catalogue.SearchStop(bus.stops[i + 1]));
         }
     }
     else {
-        for (std::size_t i = s2; i < s1; i++) {
+        for (size_t i = second_stop_number; i < first_stop_number; i++) {
             length += catalogue.GetDistanceBetweenStops(*catalogue.SearchStop(bus.stops[i + 1]), *catalogue.SearchStop(bus.stops[i]));
         }
     }
@@ -22,37 +29,36 @@ double TransportRouter::ComputeWeightForRoute(const Catalogue::TransportCatalogu
     return static_cast<double>((length * 60) / (router_settings_.bus_velocity * 1000));
 }
 
-void TransportRouter::MakeRouteGraph(const Catalogue::TransportCatalogue& catalogue) {
-    //задаем размер вершин графа
-    size_ = catalogue.GetStops().size() * 2;
-    graph::DirectedWeightedGraph<double> gr(size_);
 
-    std::size_t edge_id = 0;
-
+void TransportRouter::FillStopsGraphs(graph::DirectedWeightedGraph<double>& graph_temp, size_t& edge_id) {
     //добавляем ребра ожиданий
-    size_t i = 0;
+    size_t stops_edges = 0;
 
-    for (const auto& [key, value] : catalogue.GetStops()) {
-        stops_[catalogue.SearchStop(key)] = { i, i + 1 };
-        gr.AddEdge(std::move(graph::Edge<double>{i, i + 1, router_settings_.bus_wait_time}));
-        i += 2;
-        edges_info_[edge_id] = WaitEdgeInfo{ key , router_settings_.bus_wait_time };
+    for (const auto& [stop_name, stop_info] : catalogue_.GetStops()) {
+        stops_[catalogue_.SearchStop(stop_name)] = { stops_edges, stops_edges + 1 };
+        graph_temp.AddEdge(std::move(graph::Edge<double>{stops_edges, stops_edges + 1, router_settings_.bus_wait_time}));
+        stops_edges += 2;
+        edges_info_[edge_id] = WaitEdgeInfo{ router_settings_.bus_wait_time, stop_name };
         edge_id++;
     }
-    //добавляем ребра маршрута
-    for (const auto& [key, value] : catalogue.GetBuses()) {
+}
+void TransportRouter::FillRoutesGraphs(graph::DirectedWeightedGraph<double>& graph_temp, size_t& edge_id) {
+    for (const auto& [route_number, route] : catalogue_.GetBuses()) {
 
+        if (!route.is_roundtrip) {
+            for (size_t first_stop_number = 0; first_stop_number < route.stops.size() / 2 + 1; ++first_stop_number) {
+                for (size_t second_stop_number = 0; second_stop_number < route.stops.size() / 2 + 1; ++second_stop_number) {
+                    if (first_stop_number != second_stop_number) {
+                        graph_temp.AddEdge(std::move(
+                            graph::Edge<double>{stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
+                            stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                            ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)}
+                        ));
 
-        if (!value.is_roundtrip) {
-            for (size_t i = 0; i < value.stops.size() / 2 + 1; i++) {
-                for (size_t j = 0; j < value.stops.size() / 2 + 1; j++) {
-                    if (i != j) {
-                        gr.AddEdge(std::move(graph::Edge<double>{stops_[catalogue.SearchStop(value.stops[i])].second
-                            , stops_[catalogue.SearchStop(value.stops[j])].first
-                            , ComputeWeightForRoute(catalogue, value, i, j)})
-                        );
-
-                        edges_info_[edge_id] = BusEdgeInfo{ key , (j > i ? j - i : i - j) , ComputeWeightForRoute(catalogue, value, i, j) };
+                        edges_info_[edge_id] = BusEdgeInfo{
+                            (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
+                            ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number
+                        };
                         edge_id++;
                     }
                 }
@@ -60,22 +66,27 @@ void TransportRouter::MakeRouteGraph(const Catalogue::TransportCatalogue& catalo
             }
         }
         else {
-            for (size_t i = 0; i < value.stops.size() - 1; i++) {
-                for (size_t j = i + 1; j < value.stops.size(); j++) {
-                    if (i != j) {
-                        if (i == 0 && j == value.stops.size() - 1) {
-                            gr.AddEdge(std::move(graph::Edge<double>{stops_[catalogue.SearchStop(value.stops[i])].second
-                                , stops_[catalogue.SearchStop(value.stops[j])].first
-                                , router_settings_.bus_wait_time})
-                            );
-                            edges_info_[edge_id] = BusEdgeInfo{ key , 0 , ComputeWeightForRoute(catalogue, value, i, j) };
+            for (size_t first_stop_number = 0; first_stop_number < route.stops.size() - 1; ++first_stop_number) {
+                for (size_t second_stop_number = first_stop_number + 1; second_stop_number < route.stops.size(); ++second_stop_number) {
+                    if (first_stop_number != second_stop_number) {
+                        if (first_stop_number == 0 && second_stop_number == route.stops.size() - 1) {
+                            graph_temp.AddEdge(std::move(graph::Edge<double>{
+                                stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
+                                    stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                                    router_settings_.bus_wait_time
+                            }));
+                            edges_info_[edge_id] = BusEdgeInfo{ 0 , ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number };
                         }
                         else {
-                            gr.AddEdge(std::move(graph::Edge<double>{stops_[catalogue.SearchStop(value.stops[i])].second
-                                , stops_[catalogue.SearchStop(value.stops[j])].first
-                                , ComputeWeightForRoute(catalogue, value, i, j)})
-                            );
-                            edges_info_[edge_id] = BusEdgeInfo{ key , (j > i ? j - i : i - j) , ComputeWeightForRoute(catalogue, value, i, j) };
+                            graph_temp.AddEdge(std::move(graph::Edge<double>{
+                                stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
+                                    stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                                    ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)
+                            }));
+                            edges_info_[edge_id] = BusEdgeInfo{
+                                (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
+                                ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number
+                            };
                         }
                         edge_id++;
                     }
@@ -83,22 +94,35 @@ void TransportRouter::MakeRouteGraph(const Catalogue::TransportCatalogue& catalo
             }
         }
     }
-
-    gr_ = std::move(gr);
-    router_ = std::make_unique<graph::Router<double>>(gr_);
 }
 
-std::optional<std::deque<EdgeInfo>> TransportRouter::MakeRoute(const Catalogue::TransportCatalogue& catalogue, const std::string& from, const std::string& to) const {
+void TransportRouter::MakeGraphs() {
+    //задаем размер вершин графа
+    size_ = catalogue_.GetStops().size() * 2;
+    graph::DirectedWeightedGraph<double> graph_temp(size_);
 
-    if (!stops_.count(catalogue.SearchStop(from)) || !stops_.count(catalogue.SearchStop(to))) {
+    size_t edge_id = 0;
+
+    //добавляем ребра ожиданий
+    FillStopsGraphs(graph_temp, edge_id);
+    //добавляем ребра маршрута
+    FillRoutesGraphs(graph_temp, edge_id);
+
+    graph_ = std::move(graph_temp);
+    router_ = std::make_unique<graph::Router<double>>(graph_);
+}
+
+  std::optional<std::deque<EdgeInfo>> TransportRouter::MakeRoute(const domain::Stop* from, const domain::Stop* to) const {
+
+    if (!stops_.count(from) || !stops_.count(to)) {
         return std::nullopt;
     }
 
-    first_wait_point_ = router_->BuildRoute(stops_.at(catalogue.SearchStop(from)).first, stops_.at(catalogue.SearchStop(from)).second);
+    first_wait_point_ = router_->BuildRoute(stops_.at(from).first, stops_.at(from).second);
     if (!first_wait_point_.has_value()) {
         return std::nullopt;
     }
-    route_info_ = router_->BuildRoute(stops_.at(catalogue.SearchStop(from)).second, stops_.at(catalogue.SearchStop(to)).first);
+    route_info_ = router_->BuildRoute(stops_.at(from).second, stops_.at(to).first);
     if (!route_info_.has_value()) {
         return std::nullopt;
     }

@@ -8,10 +8,7 @@
 namespace json_reader {
     using namespace std::literals;
 
-    void Reader::InputJSON(std::istream& input
-        , Catalogue::TransportCatalogue& catalogue
-        , renderer::MapRenderer& renderer
-        , Router::TransportRouter& router) {
+    void Reader::InputJSON(std::istream& input, Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& renderer) {
 
         json::Document document = json::Load(input);
         auto& root = document.GetRoot();
@@ -32,7 +29,7 @@ namespace json_reader {
             }
             //
             if (dict.count("routing_settings"s)) {
-                FillRouteSettings(dict, router, catalogue);
+                FillRouteSettings(dict);
             }
         }
     }
@@ -190,15 +187,14 @@ namespace json_reader {
         renderer.FillRenderingStructure(structure);
     }
 
-    void Reader::FillRouteSettings(const json::Dict& dict,
-        Router::TransportRouter& router,
-        Catalogue::TransportCatalogue& catalogue) {
+    void Reader::FillRouteSettings(const json::Dict& dict) {
         auto& routing_settings = dict.at("routing_settings"s).AsDict();
-
-        router.SetSettings(routing_settings.at("bus_velocity"s).AsDouble(), routing_settings.at("bus_wait_time"s).AsDouble());
+        router_settings_.bus_velocity = routing_settings.at("bus_velocity"s).AsDouble();
+        router_settings_.bus_wait_time = routing_settings.at("bus_wait_time"s).AsDouble();
+        //router.SetSettings(routing_settings.at("bus_velocity"s).AsDouble(), routing_settings.at("bus_wait_time"s).AsDouble());
 
         //ну и здесь строим графы маршрутов.
-        router.MakeRouteGraph(catalogue);
+        //router.MakeRouteGraph(catalogue);
     }
 
     void Reader::FillStatSettings(const json::Dict& dict) {
@@ -238,13 +234,15 @@ namespace json_reader {
         }
     }
 
-    void Reader::OutputJSON(std::ostream& output
-        , const Catalogue::TransportCatalogue& catalogue
-        , renderer::MapRenderer& map
-        , const Router::TransportRouter& router) {
+    void Reader::OutputJSON(std::ostream& output, const Catalogue::TransportCatalogue& catalogue, renderer::MapRenderer& map) {
 
         using namespace json;
 
+
+        //создаем маршрут
+        Router::TransportRouter router_(router_settings_.bus_velocity, router_settings_.bus_wait_time, catalogue);
+
+        //создаем выходной json
         Builder builder;
         builder.StartArray();
         for (const auto& request : stat_requests_) {
@@ -287,7 +285,7 @@ namespace json_reader {
             //если построить маршрут от точки А до точки Б
             if (request.type == "Route"s) {
                 builder.StartDict();
-                if (auto result_situations = router.MakeRoute(catalogue, request.from, request.to)) {
+                if (auto result_situations = router_.MakeRoute(catalogue.SearchStop(request.from), catalogue.SearchStop(request.to))) {
                     builder.Key("items"s).StartArray();
                     double total_time = 0.0;
                     if (request.from != request.to) {
