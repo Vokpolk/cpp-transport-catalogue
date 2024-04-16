@@ -17,12 +17,12 @@ double TransportRouter::ComputeWeightForRoute(const Catalogue::TransportCatalogu
     double length = 0;//meters
     if (first_stop_number < second_stop_number) {
         for (size_t i = first_stop_number; i < second_stop_number; i++) {
-            length += catalogue.GetDistanceBetweenStops(*catalogue.SearchStop(bus.stops[i]), *catalogue.SearchStop(bus.stops[i + 1]));
+            length += catalogue.GetDistanceBetweenStops(catalogue.SearchStop(bus.stops[i]), catalogue.SearchStop(bus.stops[i + 1]));
         }
     }
     else {
         for (size_t i = second_stop_number; i < first_stop_number; i++) {
-            length += catalogue.GetDistanceBetweenStops(*catalogue.SearchStop(bus.stops[i + 1]), *catalogue.SearchStop(bus.stops[i]));
+            length += catalogue.GetDistanceBetweenStops(catalogue.SearchStop(bus.stops[i + 1]), catalogue.SearchStop(bus.stops[i]));
         }
     }
 
@@ -35,7 +35,7 @@ void TransportRouter::FillStopsGraphs(graph::DirectedWeightedGraph<double>& grap
     size_t stops_edges = 0;
 
     for (const auto& [stop_name, stop_info] : catalogue_.GetStops()) {
-        stops_[catalogue_.SearchStop(stop_name)] = { stops_edges, stops_edges + 1 };
+        stops_[stop_name] = { stops_edges, stops_edges + 1 };
         graph_temp.AddEdge(std::move(graph::Edge<double>{stops_edges, stops_edges + 1, router_settings_.bus_wait_time}));
         stops_edges += 2;
         edges_info_[edge_id] = WaitEdgeInfo{ router_settings_.bus_wait_time, stop_name };
@@ -50,8 +50,8 @@ void TransportRouter::FillRoutesGraphs(graph::DirectedWeightedGraph<double>& gra
                 for (size_t second_stop_number = 0; second_stop_number < route.stops.size() / 2 + 1; ++second_stop_number) {
                     if (first_stop_number != second_stop_number) {
                         graph_temp.AddEdge(std::move(
-                            graph::Edge<double>{stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
-                            stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                            graph::Edge<double>{stops_[route.stops[first_stop_number]].second,
+                            stops_[route.stops[second_stop_number]].first,
                             ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)}
                         ));
 
@@ -71,16 +71,16 @@ void TransportRouter::FillRoutesGraphs(graph::DirectedWeightedGraph<double>& gra
                     if (first_stop_number != second_stop_number) {
                         if (first_stop_number == 0 && second_stop_number == route.stops.size() - 1) {
                             graph_temp.AddEdge(std::move(graph::Edge<double>{
-                                stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
-                                    stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                                stops_[route.stops[first_stop_number]].second,
+                                    stops_[route.stops[second_stop_number]].first,
                                     router_settings_.bus_wait_time
                             }));
                             edges_info_[edge_id] = BusEdgeInfo{ 0 , ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number };
                         }
                         else {
                             graph_temp.AddEdge(std::move(graph::Edge<double>{
-                                stops_[catalogue_.SearchStop(route.stops[first_stop_number])].second,
-                                    stops_[catalogue_.SearchStop(route.stops[second_stop_number])].first,
+                                stops_[route.stops[first_stop_number]].second,
+                                    stops_[route.stops[second_stop_number]].first,
                                     ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)
                             }));
                             edges_info_[edge_id] = BusEdgeInfo{
@@ -98,8 +98,7 @@ void TransportRouter::FillRoutesGraphs(graph::DirectedWeightedGraph<double>& gra
 
 void TransportRouter::MakeGraphs() {
     //задаем размер вершин графа
-    size_ = catalogue_.GetStops().size() * 2;
-    graph::DirectedWeightedGraph<double> graph_temp(size_);
+    graph::DirectedWeightedGraph<double> graph_temp(catalogue_.GetStops().size() * 2);
 
     size_t edge_id = 0;
 
@@ -112,25 +111,18 @@ void TransportRouter::MakeGraphs() {
     router_ = std::make_unique<graph::Router<double>>(graph_);
 }
 
-  std::optional<std::deque<EdgeInfo>> TransportRouter::MakeRoute(const domain::Stop* from, const domain::Stop* to) const {
+  std::optional<std::deque<EdgeInfo>> TransportRouter::MakeRoute(const std::string& from, const std::string& to) const {
 
     if (!stops_.count(from) || !stops_.count(to)) {
         return std::nullopt;
     }
 
-    first_wait_point_ = router_->BuildRoute(stops_.at(from).first, stops_.at(from).second);
-    if (!first_wait_point_.has_value()) {
-        return std::nullopt;
-    }
-    route_info_ = router_->BuildRoute(stops_.at(from).second, stops_.at(to).first);
+    route_info_ = router_->BuildRoute(stops_.at(from).first, stops_.at(to).first);
     if (!route_info_.has_value()) {
         return std::nullopt;
     }
     std::deque<EdgeInfo> result_edges_;
 
-    for (const auto& edge : first_wait_point_.value().edges) {
-        result_edges_.push_back(edges_info_.at(edge));
-    }
     for (const auto& edge : route_info_.value().edges) {
         result_edges_.push_back(edges_info_.at(edge));
     }

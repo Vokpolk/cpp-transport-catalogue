@@ -5,12 +5,12 @@ namespace Catalogue {
     void TransportCatalogue::AddRoute(const std::string& name, const std::vector<std::string>& stops, bool is_roundtrip) {
         buses_[name] = { name, stops, is_roundtrip };
         for (const auto& stop : stops) {
-            buses_on_stops_[stop].insert(name);
+            buses_on_stops_[&stops_[stop]].insert(name);
         }
     }
     void TransportCatalogue::AddStop(const std::string& name, double lat, double lng) {
         stops_[name] = { name, lat, lng };
-        buses_on_stops_[name];
+        buses_on_stops_[&stops_[name]];
     }
 
     const Bus* TransportCatalogue::SearchRoute(const std::string& route) const {
@@ -51,7 +51,7 @@ namespace Catalogue {
         for (const auto& stop : buses_.at(route).stops) {
             second_stop = &stops_.at(stop);
 
-            new_length += GetDistanceBetweenStops(*first_stop, *second_stop);
+            new_length += GetDistanceBetweenStops(first_stop, second_stop);
 
             second.lat = stops_.at(stop).latitude;
             second.lng = stops_.at(stop).longitude;
@@ -65,21 +65,21 @@ namespace Catalogue {
     }
 
     std::optional<const std::set<std::string>> TransportCatalogue::GetStopInfo(const std::string& stop) const {
-        if (!buses_on_stops_.count(stop)) {
+        if (!stops_.count(stop) || !buses_on_stops_.count(&stops_.at(stop))) {
             return std::nullopt;
         }
-        return buses_on_stops_.at(stop);
+        return buses_on_stops_.at(&stops_.at(stop));
     }
 
     void TransportCatalogue::AddDistanceBetweenStops(const Stop* stop1, const Stop* stop2, double distance) {
         distance_between_stops_[{stop1, stop2}] = distance;
     }
-    double TransportCatalogue::GetDistanceBetweenStops(const Stop& stop1, const Stop& stop2) const {
-        if (distance_between_stops_.count({ &stop1, &stop2 })) {
-            return distance_between_stops_.at({ &stop1, &stop2 });
+    double TransportCatalogue::GetDistanceBetweenStops(const Stop* stop1, const Stop* stop2) const {
+        if (distance_between_stops_.count({ stop1, stop2 })) {
+            return distance_between_stops_.at({ stop1, stop2 });
         }
-        else if (distance_between_stops_.count({ &stop2, &stop1 })) {
-            return distance_between_stops_.at({ &stop2, &stop1 });
+        else if (distance_between_stops_.count({ stop2, stop1 })) {
+            return distance_between_stops_.at({ stop2, stop1 });
         }
         else {
             return 0.0;

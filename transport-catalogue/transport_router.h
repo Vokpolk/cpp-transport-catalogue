@@ -35,14 +35,10 @@ namespace Router {
     private:
         RouterSettings router_settings_;
         const Catalogue::TransportCatalogue& catalogue_;
-        size_t size_ = 0;
-
-        std::unordered_map<const domain::Stop*, std::pair<size_t, size_t>> stops_;
+        std::unordered_map<std::string, std::pair<size_t, size_t>> stops_;
 
         graph::DirectedWeightedGraph<double> graph_; //граф
         std::unique_ptr<graph::Router<double>> router_ = nullptr; //
-
-        mutable std::optional<typename graph::Router<double>::RouteInfo> first_wait_point_;
         mutable std::optional<typename graph::Router<double>::RouteInfo> route_info_;
 
         std::unordered_map<graph::EdgeId, EdgeInfo> edges_info_;
@@ -61,6 +57,6 @@ namespace Router {
     public:
 
         TransportRouter(double bus_velocity, double bus_wait_time, const Catalogue::TransportCatalogue& catalogue);
-        std::optional<std::deque<EdgeInfo>> MakeRoute(const domain::Stop* from, const domain::Stop* to) const;
+        std::optional<std::deque<EdgeInfo>> MakeRoute(const std::string& from, const std::string& to) const;
     };
 }

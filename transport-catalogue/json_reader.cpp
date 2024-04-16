@@ -285,7 +285,7 @@ namespace json_reader {
             //если построить маршрут от точки А до точки Б
             if (request.type == "Route"s) {
                 builder.StartDict();
-                if (auto result_situations = router_.MakeRoute(catalogue.SearchStop(request.from), catalogue.SearchStop(request.to))) {
+                if (auto result_situations = router_.MakeRoute(request.from, request.to)) {
                     builder.Key("items"s).StartArray();
                     double total_time = 0.0;
                     if (request.from != request.to) {
