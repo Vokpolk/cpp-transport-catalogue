@@ -35,7 +35,7 @@ namespace Router {
     private:
         RouterSettings router_settings_;
         const Catalogue::TransportCatalogue& catalogue_;
-        std::unordered_map<std::string, std::pair<size_t, size_t>> stops_;
+        std::unordered_map<std::string_view, std::pair<size_t, size_t>> stops_;
 
         graph::DirectedWeightedGraph<double> graph_; //граф
         std::unique_ptr<graph::Router<double>> router_ = nullptr; //

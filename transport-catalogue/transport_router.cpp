@@ -43,54 +43,98 @@ void TransportRouter::FillStopsGraphs(graph::DirectedWeightedGraph<double>& grap
     }
 }
 void TransportRouter::FillRoutesGraphs(graph::DirectedWeightedGraph<double>& graph_temp, size_t& edge_id) {
+    bool first_graph = true;
     for (const auto& [route_number, route] : catalogue_.GetBuses()) {
 
-        if (!route.is_roundtrip) {
-            for (size_t first_stop_number = 0; first_stop_number < route.stops.size() / 2 + 1; ++first_stop_number) {
-                for (size_t second_stop_number = 0; second_stop_number < route.stops.size() / 2 + 1; ++second_stop_number) {
-                    if (first_stop_number != second_stop_number) {
+        if (!route->is_roundtrip) {
+            for (size_t first_stop_number = 0; first_stop_number < route->stops.size(); ++first_stop_number) {
+                for (size_t second_stop_number = first_stop_number + 1; second_stop_number < route->stops.size(); ++second_stop_number) {
+                    if (first_graph || (second_stop_number - first_stop_number == 1)) {
+
                         graph_temp.AddEdge(std::move(
-                            graph::Edge<double>{stops_[route.stops[first_stop_number]].second,
-                            stops_[route.stops[second_stop_number]].first,
-                            ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)}
+                            graph::Edge<double>{stops_[route->stops[first_stop_number]].second,
+                            stops_[route->stops[second_stop_number]].first,
+                            ComputeWeightForRoute(catalogue_, *route, first_stop_number, second_stop_number)}
                         ));
 
                         edges_info_[edge_id] = BusEdgeInfo{
                             (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
-                            ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number
+                            ComputeWeightForRoute(catalogue_, *route, first_stop_number, second_stop_number), route_number
                         };
                         edge_id++;
-                    }
-                }
 
+                        first_graph = false;
+                    }
+                    else {
+
+                        auto& prev_graph = edges_info_[edge_id - 1];
+
+                        graph_temp.AddEdge(std::move(
+                            graph::Edge<double>{stops_[route->stops[first_stop_number]].second,
+                            stops_[route->stops[second_stop_number]].first,
+                            ComputeWeightForRoute(catalogue_, *route, second_stop_number - 1, second_stop_number) + std::get<Router::BusEdgeInfo>(prev_graph).time}
+                        ));
+
+                        edges_info_[edge_id] = BusEdgeInfo{
+                            (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
+                            ComputeWeightForRoute(catalogue_, *route, second_stop_number - 1, second_stop_number) + std::get<Router::BusEdgeInfo>(prev_graph).time, route_number
+                        };
+                        edge_id++;
+
+                    }
+
+                }
+                first_graph = true;
             }
         }
         else {
-            for (size_t first_stop_number = 0; first_stop_number < route.stops.size() - 1; ++first_stop_number) {
-                for (size_t second_stop_number = first_stop_number + 1; second_stop_number < route.stops.size(); ++second_stop_number) {
+            for (size_t first_stop_number = 0; first_stop_number < route->stops.size() - 1; ++first_stop_number) {
+                for (size_t second_stop_number = first_stop_number + 1; second_stop_number < route->stops.size(); ++second_stop_number) {
                     if (first_stop_number != second_stop_number) {
-                        if (first_stop_number == 0 && second_stop_number == route.stops.size() - 1) {
+                        if (first_stop_number == 0 && second_stop_number == route->stops.size() - 1) {
                             graph_temp.AddEdge(std::move(graph::Edge<double>{
-                                stops_[route.stops[first_stop_number]].second,
-                                    stops_[route.stops[second_stop_number]].first,
+                                stops_[route->stops[first_stop_number]].second,
+                                    stops_[route->stops[second_stop_number]].first,
                                     router_settings_.bus_wait_time
                             }));
-                            edges_info_[edge_id] = BusEdgeInfo{ 0 , ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number };
+                            edges_info_[edge_id] = BusEdgeInfo{ 0 , ComputeWeightForRoute(catalogue_, *route, first_stop_number, second_stop_number), route_number };
                         }
                         else {
-                            graph_temp.AddEdge(std::move(graph::Edge<double>{
-                                stops_[route.stops[first_stop_number]].second,
-                                    stops_[route.stops[second_stop_number]].first,
-                                    ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number)
-                            }));
-                            edges_info_[edge_id] = BusEdgeInfo{
-                                (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
-                                ComputeWeightForRoute(catalogue_, route, first_stop_number, second_stop_number), route_number
-                            };
+
+                            if (first_graph) {
+
+                                graph_temp.AddEdge(std::move(
+                                    graph::Edge<double>{stops_[route->stops[first_stop_number]].second,
+                                    stops_[route->stops[second_stop_number]].first,
+                                    ComputeWeightForRoute(catalogue_, *route, first_stop_number, second_stop_number)}
+                                ));
+
+                                edges_info_[edge_id] = BusEdgeInfo{
+                                    (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
+                                    ComputeWeightForRoute(catalogue_, *route, first_stop_number, second_stop_number), route_number
+                                };
+                                first_graph = false;
+                            }
+                            else {
+
+                                auto& prev_graph = edges_info_[edge_id - 1];
+
+                                graph_temp.AddEdge(std::move(
+                                    graph::Edge<double>{stops_[route->stops[first_stop_number]].second,
+                                    stops_[route->stops[second_stop_number]].first,
+                                    ComputeWeightForRoute(catalogue_, *route, second_stop_number - 1, second_stop_number) + std::get<Router::BusEdgeInfo>(prev_graph).time}
+                                ));
+
+                                edges_info_[edge_id] = BusEdgeInfo{
+                                    (second_stop_number > first_stop_number ? second_stop_number - first_stop_number : first_stop_number - second_stop_number),
+                                    ComputeWeightForRoute(catalogue_, *route, second_stop_number - 1, second_stop_number) + std::get<Router::BusEdgeInfo>(prev_graph).time, route_number
+                                };
+                            }
                         }
                         edge_id++;
                     }
                 }
+                first_graph = true;
             }
         }
     }

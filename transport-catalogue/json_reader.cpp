@@ -257,8 +257,9 @@ namespace json_reader {
                 auto buses_on_stop = catalogue.GetStopInfo(request.name);
                 builder.StartDict();
                 if (buses_on_stop.has_value()) {
-                    json::Node buses_arr{ json::Array{buses_on_stop.value().begin(), buses_on_stop.value().end()} };
-                    builder.Key("buses"s).Value(buses_arr.AsArray()).Key("request_id"s).Value(request.id);
+                    
+                    //json::Node buses_arr{ json::Array{buses_on_stop.value()->begin(), buses_on_stop.value()->end()} };
+                    builder.Key("buses"s).Value(std::move(json::Node{ json::Array{buses_on_stop.value()->begin(), buses_on_stop.value()->end()} }).AsArray()).Key("request_id"s).Value(request.id);
                 }
                 else {
                     builder.Key("request_id"s).Value(request.id).Key("error_message"s).Value("not found"s);
@@ -271,11 +272,11 @@ namespace json_reader {
                 auto buses = catalogue.GetRouteInfo(request.name);
                 if (buses.has_value()) {
                     builder
-                        .Key("curvature"s).Value(buses.value().curvature)
+                        .Key("curvature"s).Value(buses.value()->curvature)
                         .Key("request_id"s).Value(request.id)
-                        .Key("route_length"s).Value(buses.value().new_length)
-                        .Key("stop_count"s).Value(static_cast<int>(buses.value().stops_on_route))
-                        .Key("unique_stop_count"s).Value(static_cast<int>(buses.value().unique_stops));
+                        .Key("route_length"s).Value(buses.value()->new_length)
+                        .Key("stop_count"s).Value(static_cast<int>(buses.value()->stops_on_route))
+                        .Key("unique_stop_count"s).Value(static_cast<int>(buses.value()->unique_stops));
                 }
                 else {
                     builder.Key("request_id"s).Value(request.id).Key("error_message"s).Value("not found"s);

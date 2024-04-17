@@ -9,12 +9,12 @@ namespace renderer {
 
         for (const auto& bus : buses) {
             Route stops_and_coordinates;
-            for (const auto& stop : bus.second.stops) {
+            for (const auto& stop : bus.second->stops) {
                 if (stops.count(stop)) {
-                    stops_and_coordinates.stops.push_back({ stop, {stops.at(stop).latitude, stops.at(stop).longitude} });
+                    stops_and_coordinates.stops.push_back({ stop, {stops.at(stop)->latitude, stops.at(stop)->longitude} });
                 }
             }
-            route.push_back({ bus.first, stops_and_coordinates });
+            route.push_back({ std::string(bus.first), stops_and_coordinates });
 
         }
         std::sort(route.begin(), route.end(), [](std::pair<std::string, Route> name1, std::pair<std::string, Route> name2) {
@@ -102,7 +102,7 @@ namespace renderer {
                 routes_names.emplace_back(std::move(route_name));
             }
             else {
-                auto second_end_stop = (catalogue.GetRouteInfo(route.first).value().stops_on_route + 1) / 2;
+                auto second_end_stop = (catalogue.GetRouteInfo(route.first).value()->stops_on_route + 1) / 2;
 
                 underlayer_route_name
                     .SetFillColor(structure_.underlayer_color_)
